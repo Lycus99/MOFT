@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MOFT — Multi-Objective Fine-Tuning for Medical Vision-Language Models</title>
+  <meta name="description" content="MOFT and the PSV2026 medical vision-language dataset." />
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --rule: #e0e0e0;
+      --accent: #2563eb;
+      --maxw: 1400px;
+      /* Tiled background + light veil (see body background-image) */
+      --bg-veil: rgba(255, 255, 255, 0.80);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 18px;
+      line-height: 1.55;
+      color: var(--text);
+      background-color: var(--bg);
+      background-image:
+        linear-gradient(var(--bg-veil), var(--bg-veil)),
+        url("background.jpg");
+      background-repeat: repeat, repeat;
+      background-position: 0 0, 0 0;
+      background-size: auto, auto;
+      background-attachment: scroll;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--rule);
+      padding: 0.5rem 1.25rem;
+      font-size: 0.95rem;
+    }
+    nav .inner {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.5rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+    nav .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.5rem;
+      align-items: center;
+    }
+    nav .nav-logo {
+      height: 36px;
+      width: auto;
+      object-fit: contain;
+      opacity: 0.85;
+      transition: opacity 0.2s;
+    }
+    nav .nav-logo:hover {
+      opacity: 1;
+    }
+    nav a { color: var(--text); font-weight: 500; }
+    nav a:hover { color: var(--accent); }
+    .wrap {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 2rem clamp(1.25rem, 4vw, 4rem) 4rem;
+      width: 100%;
+    }
+    header.hero {
+      text-align: center;
+      padding: 3.5rem 0 2.75rem;
+      border-bottom: 1px solid var(--rule);
+    }
+    .paper-title {
+      margin: 0 0 2rem;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      max-width: 100%;
+    }
+    .title-brand {
+      font-size: clamp(2.85rem, 7.5vw, 3.75rem);
+      font-weight: 800;
+      color: #4A76A8;
+      letter-spacing: -0.03em;
+    }
+    .title-colon { font-weight: 800; color: #4A76A8; margin: 0 0.08em; }
+    .title-sub {
+      display: block;
+      margin-top: 0.55rem;
+      font-size: clamp(1.65rem, 3.5vw, 2.35rem);
+      font-weight: 700;
+      color: #4a4a4a;
+      max-width: 100%;
+    }
+    .authors {
+      font-size: clamp(1.05rem, 2.2vw, 1.22rem);
+      font-weight: 400;
+      margin: 0.5rem 0 1.35rem;
+      line-height: 1.65;
+    }
+    .authors sup {
+      font-size: 0.68em;
+      vertical-align: super;
+      font-weight: 600;
+      color: #333;
+    }
+    .affil-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.75rem 2rem;
+      max-width: 1100px;
+      margin: 1.5rem auto 1rem;
+      text-align: left;
+    }
+    .affil-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+      font-size: 0.98rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .affil-item sup {
+      color: var(--text);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .author-legend {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin: 1rem 0 0.85rem;
+    }
+    .author-legend sup { font-size: 0.85em; }
+    .logo-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 1.5rem 3rem;
+      margin: 1.5rem 0 1rem;
+      padding: 0.75rem 0;
+    }
+    .logo-row img {
+      height: 50px;
+      width: auto;
+      max-width: min(180px, 28vw);
+      object-fit: contain;
+      opacity: 0.85;
+      transition: opacity 0.2s;
+    }
+    .logo-row img:hover {
+      opacity: 1;
+    }
+
+    /* 页脚课题组logo区域 */
+    .lab-footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--rule);
+    }
+    .lab-footer .lab-logo {
+      height: 60px;
+      width: auto;
+      object-fit: contain;
+      opacity: 0.9;
+      transition: opacity 0.2s;
+    }
+    .lab-footer .lab-logo:hover {
+      opacity: 1;
+    }
+    .lab-footer .lab-name {
+      display: block;
+      margin-top: 0.5rem;
+      font-size: 0.92rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .contact-line {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0.5rem 0 0;
+      word-break: break-word;
+    }
+    .contact-line a { white-space: nowrap; }
+
+    .ext-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 0.6rem 0.75rem;
+      margin-top: 1.35rem;
+    }
+    .ext-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.5rem 0.95rem;
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      background: #fff;
+      transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ext-link:hover {
+      text-decoration: none;
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 1px 4px rgba(37, 99, 235, 0.12);
+    }
+    .ext-link .ext-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .ext-link .ext-icon svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+
+    .hero-teaser {
+      margin: 1.85rem 0 0;
+      max-width: 100%;
+      width: 100%;
+      padding: 0;
+      font-size: 1.02rem;
+      line-height: 1.65;
+      color: #3a3a3a;
+      text-align: center;
+    }
+    .hero-teaser strong {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    section > h2 {
+      font-size: 1.5rem;
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 0.35rem;
+      margin-bottom: 1.1rem;
+    }
+    /* Extra separation after Abstract / Dataset / Method (before next section). */
+    #dataset,
+    #method,
+    #results,
+    #bibtex {
+      margin-top: 4.25rem;
+    }
+    h3 { font-size: 1.22rem; margin-top: 1.75rem; margin-bottom: 0.5rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; margin-bottom: 0.4rem; color: #333; }
+    p { margin: 0.75rem 0; }
+    ul { margin: 0.5rem 0 1rem; padding-left: 1.35rem; }
+    li { margin: 0.35rem 0; }
+    .figure {
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+    .figure img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      background: #fff;
+    }
+    /* Same column width as section headings (full text block). */
+    .figure.section-media {
+      margin: 1.35rem 0;
+      max-width: 100%;
+      width: 100%;
+    }
+    .figure.section-media img {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    .figure.section-media .caption {
+      max-width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    /* Body-style titles above figures (same as main text). */
+    .figure.section-media > p:not(.caption) {
+      text-align: left;
+      color: var(--text);
+      margin-top: 0;
+      margin-bottom: 0.65rem;
+    }
+    .caption {
+      font-size: 0.94rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      text-align: left;
+      max-width: 60em;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .placeholder-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.25rem 0;
+    }
+    @media (max-width: 640px) { .placeholder-grid { grid-template-columns: 1fr; } }
+    .img-placeholder {
+      aspect-ratio: 16 / 10;
+      background: linear-gradient(145deg, #ececec 0%, #f5f5f5 50%, #e8e8e8 100%);
+      border: 2px dashed #bdbdbd;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #888;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    table.eval {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.98rem;
+      margin: 1rem 0;
+      background: #fff;
+      border: 1px solid var(--rule);
+    }
+    table.eval th, table.eval td {
+      border: 1px solid var(--rule);
+      padding: 0.5rem 0.65rem;
+      text-align: center;
+    }
+    table.eval th:first-child, table.eval td:first-child { text-align: left; }
+    table.eval thead { background: #f0f0f0; }
+    .note { font-size: 0.94rem; color: var(--muted); margin-top: 0.75rem; }
+
+    /* Abstract: full-width card; single flowing paragraph. */
+    .abstract-section .abstract-card {
+      max-width: 100%;
+      width: 100%;
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      padding: 1.35rem 1.5rem;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    }
+    .abstract-section .abstract-text {
+      margin: 0;
+      font-size: 0.98rem;
+      line-height: 1.65;
+      color: #2d2d2d;
+      text-align: justify;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+    }
+
+    /* Dataset / Method / Results — white card on patterned background */
+    .section-card {
+      max-width: 100%;
+      width: 100%;
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      padding: 1.35rem 1.5rem;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    }
+    .section-card > :first-child {
+      margin-top: 0;
+    }
+    .section-card > .figure:first-child {
+      margin-top: 0;
+    }
+    /* BibTeX citation card (matches abstract card). */
+    .bibtex-card {
+      max-width: 100%;
+      width: 100%;
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      padding: 1.15rem 1.35rem;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+      overflow-x: auto;
+    }
+    .bibtex-card pre {
+      margin: 0;
+      font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, Menlo, monospace;
+      font-size: 0.84rem;
+      line-height: 1.5;
+      color: var(--text);
+      white-space: pre;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="inner">
+      <div class="nav-links">
+        <a href="#abstract">Abstract</a>
+        <a href="#dataset">Dataset</a>
+        <a href="#method">Method</a>
+        <a href="#results">Results</a>
+        <a href="#bibtex">BibTeX</a>
+      </div>
+      <img class="nav-logo" src="logos/vclab.png" alt="VC Lab" />
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <header class="hero">
+      <h1 class="paper-title">
+        <span class="title-brand">MOFT</span><span class="title-colon">:</span>
+        <span class="title-sub">Multi-Objective Fine-Tuning for Medical Vision-Language Models</span>
+      </h1>
+      <p class="authors">
+        Yuchong Li<sup>1,2</sup>,
+        Xiaojun Zeng<sup>2,3</sup>,
+        Caizhen You<sup>3</sup>,
+        Pengbo Wu<sup>3</sup>,
+        Zixian Guo<sup>1,4</sup>,
+        Jian Yang<sup>3</sup>,
+        Fucang Jia<sup>2,5,†</sup>,
+        and Lei Zhang<sup>1,†</sup>
+      </p>
+
+      <div class="affil-grid">
+        <div class="affil-item"><sup>1</sup><span>The Hong Kong Polytechnic University</span></div>
+        <div class="affil-item"><sup>2</sup><span>Shenzhen Institutes of Advanced Technology, CAS</span></div>
+        <div class="affil-item"><sup>3</sup><span>Zhujiang Hospital, Southern Medical University</span></div>
+        <div class="affil-item"><sup>4</sup><span>Harbin Institute of Technology</span></div>
+        <div class="affil-item"><sup>5</sup><span>Key Lab of Biomedical Imaging Science and System, CAS</span></div>
+      </div>
+
+      <p class="author-legend">
+        <sup>†</sup> Corresponding authors: F.&nbsp;Jia and L.&nbsp;Zhang.
+      </p>
+
+      <div class="logo-row" aria-label="Institution logos">
+        <img src="logos/polyu.png" alt="The Hong Kong Polytechnic University" />
+        <img src="logos/siat.png" alt="Shenzhen Institutes of Advanced Technology, CAS" />
+        <img src="logos/zhujiang.png" alt="Zhujiang Hospital, Southern Medical University" />
+        <img src="logos/hit.png" alt="Harbin Institute of Technology" />
+      </div>
+
+      <p class="contact-line">
+        &#9993;
+        <a href="mailto:yuchong.li@connect.polyu.hk">yuchong.li@connect.polyu.hk</a>;
+        <a href="mailto:fc.jia@siat.ac.cn">fc.jia@siat.ac.cn</a>;
+        <a href="mailto:cslzhang@comp.polyu.edu.hk">cslzhang@comp.polyu.edu.hk</a>
+      </p>
+
+      <div class="ext-links" aria-label="Paper, code, models, and citation">
+        <a class="ext-link" href="path/to/arxiv">
+          <span class="ext-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 5.5h16v13H4v-13z" stroke="currentColor" stroke-width="1.75"/><path d="M8 9h8M8 12h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+          <span>arXiv paper</span>
+        </a>
+        <a class="ext-link" href="https://github.com/Lycus99/MOFT">
+          <span class="ext-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></span>
+          <span>GitHub code</span>
+        </a>
+        <a class="ext-link" href="path/to/huggingface-model">
+          <span class="ext-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.75"/><path d="M8 14c1.5 2 6.5 2 8 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="10" r="1.25" fill="currentColor"/><circle cx="15" cy="10" r="1.25" fill="currentColor"/></svg></span>
+          <span>Hugging Face model</span>
+        </a>
+        <a class="ext-link" href="https://huggingface.co/datasets/ASD9987/PSV2026">
+          <span class="ext-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="10" stroke="currentColor" stroke-width="1.75"/><path d="M8 14c1.5 2 6.5 2 8 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="10" r="1.25" fill="currentColor"/><circle cx="15" cy="10" r="1.25" fill="currentColor"/></svg></span>
+          <span>Hugging Face dataset</span>
+        </a>
+        <a class="ext-link" href="#bibtex">
+          <span class="ext-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7 4h10v2H7V4zm0 4h7v2H7V8zm0 4h10v2H7v-2zm0 4h7v2H7v-2z" fill="currentColor"/><path d="M5 3v18h14V3H5z" stroke="currentColor" stroke-width="1.75"/></svg></span>
+          <span>BibTeX</span>
+        </a>
+      </div>
+
+      <p class="hero-teaser">
+        MOFT decouples training into two independent trajectories for linguistic fluency and medical semantics, then fuses their weights via Linear Mode Connectivity to mitigate gradient interference; paired with PSV2026, a high-quality multimodal dataset enriched by critique-based augmentation, it consistently outperforms standard supervised fine-tuning across multiple architectures.
+      </p>
+    </header>
+
+    <section id="abstract" class="abstract-section" aria-labelledby="abstract-heading">
+      <h2 id="abstract-heading">Abstract</h2>
+      <div class="abstract-card">
+        <p class="abstract-text">Vision-language models (VLMs) have demonstrated immense potential in healthcare, yet ensuring strict adherence to medical factuality remains challenging. Current supervised fine-tuning (SFT) applies an undifferentiated next-token loss that treats all tokens equally. Given the inherent sparsity of medical terms in training corpora, optimization is easily dominated by frequent syntactic tokens. This dilutes learning signals for critical clinical entities and triggers gradient conflicts between linguistic fluency and medical semantic accuracy. To address this, we introduce <strong>Multi-Objective Fine-Tuning (MOFT)</strong>. MOFT decouples training into two independent trajectories for linguistic fluency and medical semantics, then fuses their weights in parameter space via Linear Mode Connectivity (LMC) to circumvent gradient interference. To rigorously evaluate MOFT and enable fair comparison, we further construct <strong>PSV2026</strong>, a high-quality 52K multimodal dataset. PSV2026 is enriched via critique-based augmentation that exposes models to corrective feedback, encouraging the learning of diagnostic rationale over flat memorization. Extensive experiments validate our approach. On PSV2026, MOFT consistently outperforms SFT across multiple architectures, improving accuracy from 63.0% to 65.5% (+2.5%) on Lingshu-7B, 58.4% to 60.8% (+2.4%) on MedGemma-4B, and 61.2% to 63.1% (+1.9%) on Qwen3VL-4B. On the external OmniAbnormalCT dataset, co-training with PSV2026 significantly elevates baseline performance, and MOFT continuously surpasses SFT across diverse data distributions.</p>
+      </div>
+    </section>
+
+    <section id="dataset">
+      <h2>PSV2026 Dataset</h2>
+      <div class="section-card">
+      <p>
+        PSV2026 is a high-quality multimodal dataset designed to address the simplified queries and noisy alignment common in existing resources like PathVQA, SLAKE, and VQA-RAD, with stronger emphasis on fine-grained spatial structure, anatomical landmarks, and pathological patterns.
+      </p>
+
+      <h3>Dataset construction</h3>
+      <p>The overall construction pipeline is summarized in the figure below.</p>
+      <div class="figure">
+        <img src="psv2026.png" alt="Illustration of PSV2026 dataset construction pipeline" />
+        <!-- <p class="caption">Figure: construction process for PSV2026.</p> -->
+      </div>
+
+      <h3>Taxonomy and statistics</h3>
+      <p>
+        The test split is described with a fine-grained taxonomy on three axes: <strong>image modality</strong>, <strong>question type</strong>, and <strong>clinical domain</strong>.
+      </p>
+      <div class="figure">
+        <img src="psv2026_statistics2.png" alt="Taxonomy and distribution statistics for the PSV2026 test set" />
+        <!-- <p class="caption">Figure: taxonomy and statistics for the PSV2026 test set.</p> -->
+      </div>
+
+      <h3>Clinical validation</h3>
+      <p>
+        <strong>Part 1. Training-set quality.</strong> Two physicians compared rewritten PSV2026 triplets against originals (PathVQA, SLAKE, VQA-RAD) in a blinded side-by-side setup (100 random samples). Mean raw agreement 90.2%, Gwet&rsquo;s AC2 = 0.933.
+      </p>
+      <table class="eval" aria-label="Clinical expert pairwise evaluation">
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            <th>PSV2026 &uarr;</th>
+            <th>Tie</th>
+            <th>Original</th>
+            <th><em>p</em>-value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Accuracy</td><td>27.0</td><td>69.5</td><td>3.5</td><td>&lt;0.001</td></tr>
+          <tr><td>Completeness</td><td>97.5</td><td>1.0</td><td>1.5</td><td>&lt;0.001</td></tr>
+          <tr><td>Clinical utility</td><td>94.5</td><td>3.0</td><td>2.5</td><td>&lt;0.001</td></tr>
+          <tr><td>Linguistic clarity</td><td>95.0</td><td>2.5</td><td>2.5</td><td>&lt;0.001</td></tr>
+          <tr><td><strong>Overall</strong></td><td><strong>96.0</strong></td><td><strong>1.5</strong></td><td><strong>2.5</strong></td><td><strong>&lt;0.001</strong></td></tr>
+        </tbody>
+      </table>
+      <!-- <p class="note">Percentages are the fraction of cases in which the listed option was preferred.</p> -->
+      <p>
+        <strong>Part 2. Query–rubric alignment.</strong> Same raters verified that test-set rubrics match their queries (100 samples). 97% fully or partially aligned; weighted Gwet's AC2 = 0.783.
+      </p>
+      <p>
+        <strong>Part 3. LLM-as-judge audit.</strong> Same raters reviewed automated scores and rationales against their own judgments (100 samples). 98.5% fully or partially aligned; weighted Gwet's AC2 = 0.864.
+      </p>
+      </div>
+    </section>
+
+    <section id="method">
+      <h2>Method</h2>
+      <div class="section-card">
+      <div class="figure section-media">
+        <p>Comparison of fine-tuning paradigms for medical VLMs</p>
+        <img src="compare.png" alt="Comparison of fine-tuning paradigms for medical VLMs" />
+      </div>
+      <div class="figure section-media">
+        <p>Overview of the MOFT framework</p>
+        <img src="fig_algorithm.png" alt="Overview of the MOFT framework" />
+      </div>
+      </div>
+    </section>
+
+    <section id="results">
+      <h2>Results</h2>
+      <div class="section-card">
+      <div class="figure section-media">
+        <p>Quantitative accuracy comparison (%) of different fine-tuning strategies</p>
+        <img src="table1.png" alt="Quantitative accuracy comparison (%) of different fine-tuning strategies" />
+      </div>
+      <div class="figure section-media">
+        <p>Benchmark comparison across proprietary, general, medical, and our best adapted model on PSV2026</p>
+        <img src="table2.png" alt="Benchmark comparison across proprietary, general, medical, and our best adapted model on PSV2026" />
+      </div>
+      <div class="figure section-media">
+        <p>Qualitative examples of standard SFT and the proposed MOFT</p>
+        <img src="qualitative.png" alt="Qualitative examples of standard SFT and the proposed MOFT" />
+      </div>
+      </div>
+    </section>
+
+    <section id="bibtex" aria-labelledby="bibtex-heading">
+      <h2 id="bibtex-heading">Citation (BibTeX)</h2>
+      <!-- <p>If you use this work, please cite the paper as follows (placeholder entry—replace when the camera-ready citation is available).</p> -->
+      <div class="bibtex-card">
+        <pre><code>@article{moft2026placeholder,
+  title   = {Multi-Objective Fine-Tuning for Medical Vision-Language Models},
+  author  = {Li, Yuchong and Zeng, Xiaojun and You, Caizhen and Wu, Pengbo and Guo, Zixian and Yang, Jian and Jia, Fucang and Zhang, Lei},
+  journal = {TO BE FILLED},
+  year    = {2026},
+  note    = {BibTeX content placeholder --- replace with official entry.}
+}</code></pre>
+      </div>
+    </section>
+
+    <!-- 课题组logo独立展示在页脚 -->
+    <div class="lab-footer">
+      <img class="lab-logo" src="logos/vclab.png" alt="VC Lab" />
+      <span class="lab-name">Visual Computing Lab</span>
+    </div>
+  </div>
+</body>
+</html>
