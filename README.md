@@ -168,18 +168,6 @@ If you use **MOFT** or this code in research, please cite the paper (update venu
 }
 ```
 
-**This software repository (replace URL with your GitHub repo):**
-
-```bibtex
-@software{moft_swift_med_loss,
-  title        = {MOFT: MS-SWIFT patch for medical loss scaling (MedLossScale)},
-  author       = {Li, Yuchong and collaborators},
-  year         = {2026},
-  url          = {https://github.com/<your-org>/<your-repo>},
-  note         = {Companion code for MOFT; see https://lycus99.github.io/MOFT/}
-}
-```
-
 ---
 
 **Disclaimer:** This README describes research-oriented companion code; it is not an official ModelScope release. Use at your own risk in production.
